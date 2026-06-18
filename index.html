@@ -2,33 +2,28 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Legacy AR - FUTBOL KIDS Premium WebAR</title>
+    <title>Legacy AR - FUTBOL KIDS Premium</title>
     <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.1/dist/mindar-image-aframe.prod.js"></script>
     <style>
         body { margin: 0; overflow: hidden; background-color: transparent; }
-        /* Aumentamos z-index a 9999 para asegurar que el botón siempre responda al clic */
-        #recording-btn { 
-            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); 
-            z-index: 9999; width: 70px; height: 70px; border-radius: 50%; 
-            background-color: #ff0000; border: 4px solid white; cursor: pointer; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-        }
+        #recording-btn { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 9999; width: 70px; height: 70px; border-radius: 50%; background-color: #ff0000; border: 4px solid white; cursor: pointer; }
         #recording-btn.recording { background-color: #222; animation: pulse 1s infinite; border-color: #ff0000; }
+        #flash-btn { position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%); z-index: 9999; width: 50px; height: 50px; background-color: rgba(0,0,0,0.6); border: 2px solid white; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        #flash-btn.active { background-color: #ffd700; border-color: #ffd700; }
         @keyframes pulse { 0%, 100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(0.9); } }
-        .a-enter-vr { display: none !important; }
     </style>
 </head>
 <body>
     <button id="recording-btn"></button>
-    
+    <div id="flash-btn">⚡</div>
+
     <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiScanning: no;" 
              renderer="colorManagement: true; alpha: true" vr-mode-ui="enabled: false">
         <a-assets>
             <video id="miVideo" src="video.mp4" loop="true" playsinline crossorigin="anonymous"></video>
         </a-assets>
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-        
         <a-entity mindar-image-target="targetIndex: 0"><a-plane src="#miVideo" width="1" height="1.77" material="shader: flat; src: #miVideo;"></a-plane></a-entity>
         <a-entity mindar-image-target="targetIndex: 1"><a-plane src="#miVideo" width="1" height="1.77" material="shader: flat; src: #miVideo;"></a-plane></a-entity>
         <a-entity mindar-image-target="targetIndex: 2"><a-plane src="#miVideo" width="1" height="1.77" material="shader: flat; src: #miVideo;"></a-plane></a-entity>
@@ -39,45 +34,37 @@
 
     <script>
         const btn = document.getElementById("recording-btn");
+        const flashBtn = document.getElementById("flash-btn");
         const video = document.querySelector("#miVideo");
-        let mediaRecorder, chunks = [], isRecording = false, audioCtx, mixer;
+        let mediaRecorder, chunks = [], isRecording = false;
 
-        // Configuración de targets
-        document.querySelectorAll("[mindar-image-target]").forEach(target => {
-            target.addEventListener("targetFound", () => video.play());
-            target.addEventListener("targetLost", () => video.pause());
+        // Flash logic
+        flashBtn.addEventListener("click", async () => {
+            const videoEl = document.querySelector('video[autoplay]');
+            const track = videoEl.srcObject.getVideoTracks()[0];
+            const torch = !track.getCapabilities().torch;
+            await track.applyConstraints({ advanced: [{ torch: torch }] });
+            flashBtn.classList.toggle("active");
         });
 
-        async function initAudio() {
-            if(!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                mixer = audioCtx.createMediaStreamDestination();
-                const videoSource = audioCtx.createMediaElementSource(video);
-                videoSource.connect(mixer);
-                videoSource.connect(audioCtx.destination);
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({audio: true});
-                    audioCtx.createMediaStreamSource(stream).connect(mixer);
-                } catch(e) { console.warn("Micrófono no disponible"); }
-            }
-            if(audioCtx.state === 'suspended') await audioCtx.resume();
-        }
-
-        btn.addEventListener("click", async () => {
+        // Recording logic
+        btn.addEventListener("click", () => {
             if (!isRecording) {
-                await initAudio();
+                // Capturamos el video de la cámara (MindAR lo crea en el body)
+                const camVideo = document.querySelector('video[autoplay]');
                 const canvas = document.querySelector("canvas.a-canvas");
-                const videoStream = canvas.captureStream(24);
-                // Combinamos video del canvas + audio del mixer
-                const stream = new MediaStream([...videoStream.getVideoTracks(), ...mixer.stream.getAudioTracks()]);
                 
-                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8,opus' });
-                mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+                // NOTA: Para grabar la cámara y el AR juntos, usamos el contexto del Canvas
+                // que MindAR ya superpone sobre la cámara.
+                const stream = canvas.captureStream(24);
+                
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+                mediaRecorder.ondataavailable = e => chunks.push(e.data);
                 mediaRecorder.onstop = () => {
                     const blob = new Blob(chunks, { type: 'video/webm' });
                     const a = document.createElement("a");
                     a.href = URL.createObjectURL(blob);
-                    a.download = "Legacy_Record_" + Date.now() + ".webm";
+                    a.download = "Legacy_Record.webm";
                     a.click();
                     chunks = [];
                 };
@@ -89,6 +76,11 @@
                 isRecording = false;
                 btn.classList.remove("recording");
             }
+        });
+
+        document.querySelectorAll("[mindar-image-target]").forEach(target => {
+            target.addEventListener("targetFound", () => video.play());
+            target.addEventListener("targetLost", () => video.pause());
         });
     </script>
 </body>
