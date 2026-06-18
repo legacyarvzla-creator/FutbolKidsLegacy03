@@ -7,7 +7,13 @@
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.1/dist/mindar-image-aframe.prod.js"></script>
     <style>
         body { margin: 0; overflow: hidden; background-color: transparent; }
-        #recording-btn { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 1000; width: 70px; height: 70px; border-radius: 50%; background-color: #ff0000; border: 4px solid white; cursor: pointer; }
+        /* Aumentamos z-index a 9999 para asegurar que el botón siempre responda al clic */
+        #recording-btn { 
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); 
+            z-index: 9999; width: 70px; height: 70px; border-radius: 50%; 
+            background-color: #ff0000; border: 4px solid white; cursor: pointer; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
         #recording-btn.recording { background-color: #222; animation: pulse 1s infinite; border-color: #ff0000; }
         @keyframes pulse { 0%, 100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(0.9); } }
         .a-enter-vr { display: none !important; }
@@ -19,68 +25,69 @@
     <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiScanning: no;" 
              renderer="colorManagement: true; alpha: true" vr-mode-ui="enabled: false">
         <a-assets>
-            <video id="vid" src="video.mp4" loop="true" playsinline crossorigin="anonymous"></video>
+            <video id="miVideo" src="video.mp4" loop="true" playsinline crossorigin="anonymous"></video>
         </a-assets>
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
         
-        <a-entity mindar-image-target="targetIndex: 0"><a-plane src="#vid" width="1" height="1.77" material="shader: flat; src: #vid;"></a-plane></a-entity>
-        <a-entity mindar-image-target="targetIndex: 1"><a-plane src="#vid" width="1" height="1.77" material="shader: flat; src: #vid;"></a-plane></a-entity>
-        <a-entity mindar-image-target="targetIndex: 2"><a-plane src="#vid" width="1" height="1.77" material="shader: flat; src: #vid;"></a-plane></a-entity>
-        <a-entity mindar-image-target="targetIndex: 3"><a-plane src="#vid" width="1" height="1.77" material="shader: flat; src: #vid;"></a-plane></a-entity>
-        <a-entity mindar-image-target="targetIndex: 4"><a-plane src="#vid" width="1" height="1.77" material="shader: flat; src: #vid;"></a-plane></a-entity>
-        <a-entity mindar-image-target="targetIndex: 5"><a-plane src="#vid" width="1" height="1.77" material="shader: flat; src: #vid;"></a-plane></a-entity>
+        <a-entity mindar-image-target="targetIndex: 0"><a-plane src="#miVideo" width="1" height="1.77" material="shader: flat; src: #miVideo;"></a-plane></a-entity>
+        <a-entity mindar-image-target="targetIndex: 1"><a-plane src="#miVideo" width="1" height="1.77" material="shader: flat; src: #miVideo;"></a-plane></a-entity>
+        <a-entity mindar-image-target="targetIndex: 2"><a-plane src="#miVideo" width="1" height="1.77" material="shader: flat; src: #miVideo;"></a-plane></a-entity>
+        <a-entity mindar-image-target="targetIndex: 3"><a-plane src="#miVideo" width="1" height="1.77" material="shader: flat; src: #miVideo;"></a-plane></a-entity>
+        <a-entity mindar-image-target="targetIndex: 4"><a-plane src="#miVideo" width="1" height="1.77" material="shader: flat; src: #miVideo;"></a-plane></a-entity>
+        <a-entity mindar-image-target="targetIndex: 5"><a-plane src="#miVideo" width="1" height="1.77" material="shader: flat; src: #miVideo;"></a-plane></a-entity>
     </a-scene>
 
     <script>
-        /* MOTOR DE AUDIO Y GRABACIÓN */
-        const _0x31a4=["getElementById","recording-btn","querySelector","#vid","addEventListener","click","video","createMediaStreamDestination","createMediaElementSource","connect","destination","mediaDevices","getUserMedia","audio","state","suspended","resume","captureStream","MediaRecorder","video/webm;codecs=vp9","ondataavailable","push","onstop","start","stop","add","remove","Blob","video/webm","createObjectURL","createElement","download","LegacyAR_Export_","classList","recording"];
-        const btn=document[_0x31a4[0]](_0x31a4[1]);
-        const videoAnim=document[_0x31a4[2]](_0x31a4[3]);
-        let mediaRecorder,chunks=[],isRecording=false,audioCtx,mixer;
+        const btn = document.getElementById("recording-btn");
+        const video = document.querySelector("#miVideo");
+        let mediaRecorder, chunks = [], isRecording = false, audioCtx, mixer;
 
-        // Configuración de targets para play/pause
+        // Configuración de targets
         document.querySelectorAll("[mindar-image-target]").forEach(target => {
-            target.addEventListener("targetFound", () => videoAnim.play());
-            target.addEventListener("targetLost", () => videoAnim.pause());
+            target.addEventListener("targetFound", () => video.play());
+            target.addEventListener("targetLost", () => video.pause());
         });
 
         async function initAudio() {
             if(!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 mixer = audioCtx.createMediaStreamDestination();
-                const videoSource = audioCtx.createMediaElementSource(videoAnim);
+                const videoSource = audioCtx.createMediaElementSource(video);
                 videoSource.connect(mixer);
                 videoSource.connect(audioCtx.destination);
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({audio: true});
                     audioCtx.createMediaStreamSource(stream).connect(mixer);
-                } catch(e) { console.log("Microfono no disponible"); }
+                } catch(e) { console.warn("Micrófono no disponible"); }
             }
             if(audioCtx.state === 'suspended') await audioCtx.resume();
         }
 
-        btn.addEventListener(_0x31a4[4], async () => {
-            if(!isRecording) {
+        btn.addEventListener("click", async () => {
+            if (!isRecording) {
                 await initAudio();
                 const canvas = document.querySelector("canvas.a-canvas");
-                const stream = new MediaStream([...canvas.captureStream(24).getVideoTracks(), ...mixer.stream.getAudioTracks()]);
-                mediaRecorder = new MediaRecorder(stream, {mimeType: _0x31a4[19]});
-                mediaRecorder.ondataavailable = e => chunks.push(e.data);
+                const videoStream = canvas.captureStream(24);
+                // Combinamos video del canvas + audio del mixer
+                const stream = new MediaStream([...videoStream.getVideoTracks(), ...mixer.stream.getAudioTracks()]);
+                
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8,opus' });
+                mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
                 mediaRecorder.onstop = () => {
-                    const blob = new Blob(chunks, {type: _0x31a4[28]});
+                    const blob = new Blob(chunks, { type: 'video/webm' });
                     const a = document.createElement("a");
                     a.href = URL.createObjectURL(blob);
-                    a.download = _0x31a4[32] + Date.now() + ".webm";
+                    a.download = "Legacy_Record_" + Date.now() + ".webm";
                     a.click();
                     chunks = [];
                 };
                 mediaRecorder.start();
                 isRecording = true;
-                btn.classList.add(_0x31a4[33]);
+                btn.classList.add("recording");
             } else {
                 mediaRecorder.stop();
                 isRecording = false;
-                btn.classList.remove(_0x31a4[33]);
+                btn.classList.remove("recording");
             }
         });
     </script>
