@@ -2,11 +2,11 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Legacy AR - Android Multi-Capture</title>
+    <title>Legacy AR - FULL CAPTURE</title>
     <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.1/dist/mindar-image-aframe.prod.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: transparent; }
+        body { margin: 0; overflow: hidden; }
         #recording-btn { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 9999; width: 70px; height: 70px; border-radius: 50%; background-color: #ff0000; border: 4px solid white; cursor: pointer; }
         #recording-btn.recording { background-color: #222; animation: pulse 1s infinite; border-color: #ff0000; }
         #flash-btn { position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%); z-index: 9999; width: 50px; height: 50px; background-color: rgba(0,0,0,0.6); border: 2px solid white; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; }
@@ -33,48 +33,31 @@
 
     <script>
         const btn = document.getElementById("recording-btn");
-        const flashBtn = document.getElementById("flash-btn");
-        let mediaRecorder, chunks = [], isRecording = false;
+        let mediaRecorder, chunks = [];
 
-        btn.addEventListener("click", () => {
-            if (!isRecording) {
-                // Seleccionamos el elemento de video de la cámara que MindAR genera
-                const camVideo = document.querySelector('video[autoplay]');
-                const arCanvas = document.querySelector('canvas.a-canvas');
-                
-                // Creamos un canvas maestro para combinar ambos
-                const masterCanvas = document.createElement('canvas');
-                masterCanvas.width = camVideo.videoWidth;
-                masterCanvas.height = camVideo.videoHeight;
-                const ctx = masterCanvas.getContext('2d');
+        btn.addEventListener("click", async () => {
+            if (!mediaRecorder || mediaRecorder.state === "inactive") {
+                // Usamos getDisplayMedia para capturar TODO lo que ve el usuario (Cámara + AR)
+                const stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { displaySurface: "browser" },
+                    audio: true
+                });
 
-                // Bucle de dibujo (renderizado)
-                function draw() {
-                    if (!isRecording) return;
-                    ctx.drawImage(camVideo, 0, 0, masterCanvas.width, masterCanvas.height);
-                    ctx.drawImage(arCanvas, 0, 0, masterCanvas.width, masterCanvas.height);
-                    requestAnimationFrame(draw);
-                }
-                
-                const stream = masterCanvas.captureStream(24);
                 mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
                 mediaRecorder.ondataavailable = e => chunks.push(e.data);
                 mediaRecorder.onstop = () => {
                     const blob = new Blob(chunks, { type: 'video/webm' });
                     const a = document.createElement("a");
                     a.href = URL.createObjectURL(blob);
-                    a.download = "Legacy_Record_Pro.webm";
+                    a.download = "Legacy_Record_Full.webm";
                     a.click();
                     chunks = [];
+                    stream.getTracks().forEach(track => track.stop());
                 };
-                
                 mediaRecorder.start();
-                draw(); // Iniciamos el bucle de combinación
-                isRecording = true;
                 btn.classList.add("recording");
             } else {
                 mediaRecorder.stop();
-                isRecording = false;
                 btn.classList.remove("recording");
             }
         });
