@@ -2,65 +2,61 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Legacy AR - FULL CAPTURE</title>
+    <title>Legacy AR - FUTBOL KIDS Premium WebAR</title>
     <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.1/dist/mindar-image-aframe.prod.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; }
-        #recording-btn { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 9999; width: 70px; height: 70px; border-radius: 50%; background-color: #ff0000; border: 4px solid white; cursor: pointer; }
-        #recording-btn.recording { background-color: #222; animation: pulse 1s infinite; border-color: #ff0000; }
-        #flash-btn { position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%); z-index: 9999; width: 50px; height: 50px; background-color: rgba(0,0,0,0.6); border: 2px solid white; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; }
-        @keyframes pulse { 0%, 100% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(0.9); } }
+        body { margin: 0; overflow: hidden; background-color: black; }
+        #recording-btn { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 1000; width: 70px; height: 70px; border-radius: 50%; background-color: #ff0000; border: 4px solid white; cursor: pointer; }
+        #recording-btn.recording { background-color: #222; border-color: #ff0000; }
+        #flash-btn { position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%); z-index: 1000; width: 50px; height: 50px; border-radius: 50%; background-color: rgba(0,0,0,0.6); border: 2px solid white; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .a-enter-vr { display: none !important; }
     </style>
 </head>
-<body>
-    <button id="recording-btn"></button>
-    <div id="flash-btn">⚡</div>
 
-    <a-scene mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiScanning: no;" 
-             renderer="colorManagement: true; alpha: true" vr-mode-ui="enabled: false">
+<body>
+    <div id="flash-btn"><svg viewBox="0 0 24 24" width="25" height="25" fill="white"><path d="M7,2V13H10V22L17,10H13L17,2H7Z" /></svg></div>
+    <button id="recording-btn"></button>
+
+    <a-scene mindar-image="imageTargetSrc: ./targets.mind;" renderer="preserveDrawingBuffer: true; antialias: true; colorManagement: true" vr-mode-ui="enabled: false">
         <a-assets>
-            <video id="miVideo" src="video.mp4" loop="true" playsinline crossorigin="anonymous"></video>
+            <video id="vid" src="video.mp4" loop="true" muted="true" autoplay="true" playsinline crossorigin="anonymous"></video>
         </a-assets>
+
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-        <a-entity mindar-image-target="targetIndex: 0"><a-plane src="#miVideo" width="1" height="1.77" material="shader: flat; src: #miVideo;"></a-plane></a-entity>
-        <a-entity mindar-image-target="targetIndex: 1"><a-plane src="#miVideo" width="1" height="1.77" material="shader: flat; src: #miVideo;"></a-plane></a-entity>
-        <a-entity mindar-image-target="targetIndex: 2"><a-plane src="#miVideo" width="1" height="1.77" material="shader: flat; src: #miVideo;"></a-plane></a-entity>
-        <a-entity mindar-image-target="targetIndex: 3"><a-plane src="#miVideo" width="1" height="1.77" material="shader: flat; src: #miVideo;"></a-plane></a-entity>
-        <a-entity mindar-image-target="targetIndex: 4"><a-plane src="#miVideo" width="1" height="1.77" material="shader: flat; src: #miVideo;"></a-plane></a-entity>
-        <a-entity mindar-image-target="targetIndex: 5"><a-plane src="#miVideo" width="1" height="1.77" material="shader: flat; src: #miVideo;"></a-plane></a-entity>
+
+        <a-entity mindar-image-target="targetIndex: 0"><a-video src="#vid" width="1" height="1.777" position="0 0 0" scale="1.15 1.15 1"></a-video></a-entity>
+        <a-entity mindar-image-target="targetIndex: 1"><a-video src="#vid" width="1" height="1.777" position="0 0 0" scale="1.15 1.15 1"></a-video></a-entity>
+        <a-entity mindar-image-target="targetIndex: 2"><a-video src="#vid" width="1" height="1.777" position="0 0 0" scale="1.15 1.15 1"></a-video></a-entity>
+        <a-entity mindar-image-target="targetIndex: 3"><a-video src="#vid" width="1" height="1.777" position="0 0 0" scale="1.15 1.15 1"></a-video></a-entity>
+        <a-entity mindar-image-target="targetIndex: 4"><a-video src="#vid" width="1" height="1.777" position="0 0 0" scale="1.15 1.15 1"></a-video></a-entity>
+        <a-entity mindar-image-target="targetIndex: 5"><a-video src="#vid" width="1" height="1.777" position="0 0 0" scale="1.15 1.15 1"></a-video></a-entity>
     </a-scene>
 
     <script>
-        const btn = document.getElementById("recording-btn");
-        let mediaRecorder, chunks = [];
+        const video = document.getElementById('vid');
+        const btn = document.getElementById('recording-btn');
 
-        btn.addEventListener("click", async () => {
-            if (!mediaRecorder || mediaRecorder.state === "inactive") {
-                // Usamos getDisplayMedia para capturar TODO lo que ve el usuario (Cámara + AR)
-                const stream = await navigator.mediaDevices.getDisplayMedia({
-                    video: { displaySurface: "browser" },
-                    audio: true
-                });
-
-                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-                mediaRecorder.ondataavailable = e => chunks.push(e.data);
-                mediaRecorder.onstop = () => {
-                    const blob = new Blob(chunks, { type: 'video/webm' });
-                    const a = document.createElement("a");
-                    a.href = URL.createObjectURL(blob);
-                    a.download = "Legacy_Record_Full.webm";
-                    a.click();
-                    chunks = [];
-                    stream.getTracks().forEach(track => track.stop());
-                };
-                mediaRecorder.start();
-                btn.classList.add("recording");
-            } else {
-                mediaRecorder.stop();
-                btn.classList.remove("recording");
+        btn.addEventListener('click', () => {
+            if (video.muted) {
+                video.muted = false;
+                video.play();
             }
         });
+
+        // CAMBIO CLAVE: Usamos querySelectorAll para capturar TODOS los targets
+        const targets = document.querySelectorAll("[mindar-image-target]");
+        
+        targets.forEach(target => {
+            target.addEventListener("targetFound", () => {
+                video.play();
+            });
+            target.addEventListener("targetLost", () => {
+                video.pause();
+            });
+        });
+
+        /* AQUÍ PUEDES PEGAR TU BLOQUE ENCRIPTADO _0x31a4 ORIGINAL */
     </script>
 </body>
 </html>
